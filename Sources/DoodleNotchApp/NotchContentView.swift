@@ -1,9 +1,13 @@
 import SwiftUI
+import AppKit
 import DoodleCore
 
 struct NotchContentView: View {
     var boardManager: BoardManager
     @State private var displayItems: [DoodleItem] = []
+    @State private var showDebug = false
+    @State private var optionMonitor: Any?
+    @State private var quitHovered = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -22,9 +26,13 @@ struct NotchContentView: View {
             footer
         }
         .padding(12)
-        .frame(width: 360)
+        .frame(width: 380)
         .onAppear {
             refresh()
+            setupOptionMonitor()
+        }
+        .onDisappear {
+            removeOptionMonitor()
         }
         .onHover { boardManager.onExpandedHover?($0) }
     }
@@ -34,19 +42,35 @@ struct NotchContentView: View {
             Image(systemName: "list.bullet.clipboard")
                 .foregroundStyle(.secondary)
             Text("agent-doodle")
-                .font(.system(size: 13, weight: .semibold))
+                .font(.system(size: 14, weight: .semibold))
             Spacer()
             if boardManager.waitingCount > 0 {
                 Label("\(boardManager.waitingCount) waiting", systemImage: "exclamationmark.triangle.fill")
                     .font(.system(size: 11))
                     .foregroundStyle(.red)
             }
+            // Subtle quit affordance in corner of expanded view. Muted until hovered.
+            // Cmd+Q is handled at AppDelegate level (real NSEvent monitor); Menu shortcut does not work reliably here.
+            Menu {
+                Button("Quit Agent Doodle") {
+                    NSApplication.shared.terminate(nil)
+                }
+                // TODO: Launch at Login, other preferences. Menu can grow.
+            } label: {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.tertiary)
+                    .opacity(quitHovered ? 0.8 : 0.15)
+            }
+            .buttonStyle(.plain)
+            .onHover { quitHovered = $0 }
+            .padding(.leading, 2)
         }
     }
 
     private var emptyState: some View {
         Text("No active items. Agents will post with `doodle set`.")
-            .font(.system(size: 12))
+            .font(.system(size: 13))
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.vertical, 8)
@@ -67,17 +91,21 @@ struct NotchContentView: View {
     }
 
     private var footer: some View {
-        HStack {
-            Text("Board: \(shortBoardPath())")
-                .font(.system(size: 9))
-                .foregroundStyle(.tertiary)
-            Spacer()
-            Button("Refresh") {
-                refresh()
+        Group {
+            if showDebug {
+                HStack {
+                    Text("Board: \(shortBoardPath())")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.tertiary)
+                    Spacer()
+                    Button("Refresh") {
+                        refresh()
+                    }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                }
             }
-            .buttonStyle(.plain)
-            .font(.system(size: 10))
-            .foregroundStyle(.secondary)
         }
     }
 
@@ -94,6 +122,23 @@ struct NotchContentView: View {
         }
         return p
     }
+
+    private func setupOptionMonitor() {
+        removeOptionMonitor() // safety
+        // Seed initial state in case Option is already held when view appears.
+        showDebug = NSEvent.modifierFlags.contains(.option)
+        optionMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { event in
+            self.showDebug = event.modifierFlags.contains(.option)
+            return event
+        }
+    }
+
+    private func removeOptionMonitor() {
+        if let mon = optionMonitor {
+            NSEvent.removeMonitor(mon)
+            optionMonitor = nil
+        }
+    }
 }
 
 // MARK: - Subviews
@@ -102,7 +147,7 @@ private struct SectionHeader: View {
     let title: String
     var body: some View {
         Text(title.uppercased())
-            .font(.system(size: 10, weight: .medium))
+            .font(.system(size: 11, weight: .medium))
             .foregroundStyle(.secondary)
             .padding(.top, 4)
     }
@@ -112,48 +157,33 @@ private struct ItemCard: View {
     let item: DoodleItem
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            HStack(spacing: 6) {
+        VStack(alignment: .leading, spacing: 2) {
+            // Line 1: glyph + name (body) | metadata right (source · time)
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                if let glyph = glyphFor(type: item.type) {
+                    Text(glyph)
+                        .font(.system(size: 13))
+                }
                 Text(item.display_name)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .lineLimit(1)
 
                 Spacer()
 
-                Text(item.source)
+                Text("\(item.source) · \(DoodleDate.relative(from: item.updated_at))")
                     .font(.system(size: 10))
                     .foregroundStyle(.secondary)
-
-                Text(DoodleDate.relative(from: item.updated_at))
-                    .font(.system(size: 10))
-                    .foregroundStyle(DoodleDate.isStale(item.updated_at) ? .orange.opacity(0.7) : .secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
             }
 
-            if !item.summary.isEmpty {
-                Text(item.summary)
-                    .font(.system(size: 11))
+            // Line 2: single body line (detail preferred for waiting_on_user, summary otherwise)
+            let bodyText = preferredBodyText(for: item)
+            if !bodyText.isEmpty {
+                Text(bodyText)
+                    .font(.system(size: 13))
                     .foregroundStyle(.primary)
                     .lineLimit(2)
-            }
-
-            if let detail = item.detail, !detail.isEmpty {
-                Text(detail)
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(3)
-                    .padding(.top, 1)
-            }
-
-            // subtle type / status pill
-            HStack(spacing: 4) {
-                Text(item.type)
-                    .font(.system(size: 9))
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 1)
-                    .background(Capsule().fill(Color.gray.opacity(0.15)))
-                Text(item.status)
-                    .font(.system(size: 9))
-                    .foregroundStyle(statusColor(item.status))
             }
         }
         .padding(8)
@@ -164,13 +194,21 @@ private struct ItemCard: View {
         .opacity(DoodleDate.isStale(item.updated_at) ? 0.55 : 1.0)
     }
 
-    private func statusColor(_ status: String) -> Color {
-        switch status {
-        case "waiting_on_user": return .red
-        case "blocked": return .orange
-        case "active": return .blue
-        default: return .secondary
+    private func glyphFor(type: String) -> String? {
+        switch type.lowercased() {
+        case "question": return "❓"
+        case "session": return "🔨"
+        case "blocker": return "🚧"
+        case "note": return "📝"
+        default: return nil
         }
+    }
+
+    private func preferredBodyText(for item: DoodleItem) -> String {
+        let detail = item.detail?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty
+        let summary = item.summary.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty
+        let candidates = item.status == "waiting_on_user" ? [detail, summary] : [summary, detail]
+        return candidates.compactMap { $0 }.first ?? ""
     }
 
     private func backgroundForItem(_ item: DoodleItem) -> Color {
@@ -182,4 +220,8 @@ private struct ItemCard: View {
         }
         return Color.gray.opacity(0.04)
     }
+}
+
+private extension String {
+    var nonEmpty: String? { isEmpty ? nil : self }
 }

@@ -190,6 +190,7 @@ swift run DoodleNotchApp
 - Badge shows count of `waiting_on_user` items.
 - Hover to expand full dashboard.
 - Polls every ~5 seconds.
+- Subtle gear (⌘+Q or menu) in top-right of expanded header for Quit (app-level NSEvent handler; no misleading Menu shortcut).
 
 ---
 

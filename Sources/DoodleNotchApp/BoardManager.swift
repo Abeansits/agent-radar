@@ -17,7 +17,7 @@ final class BoardManager {
         do {
             let all = try BoardStore.loadFiltered(includeDone: false)
             self.items = all
-            self.waitingCount = all.filter { $0.status == "waiting_on_user" }.count
+            self.waitingCount = Self.waitingCount(in: all)
         } catch {
             emit("Reload failed: \(error)")
             self.items = []
@@ -29,10 +29,14 @@ final class BoardManager {
     func reloadForBadge() {
         do {
             let all = try BoardStore.loadFiltered(includeDone: false)
-            self.waitingCount = all.filter { $0.status == "waiting_on_user" }.count
+            self.waitingCount = Self.waitingCount(in: all)
         } catch {
             // silent for timer path
         }
+    }
+
+    private static func waitingCount(in items: [DoodleItem]) -> Int {
+        items.filter { $0.status == "waiting_on_user" }.count
     }
 
     /// Full items grouped for the expanded view (called on appear/refresh)
@@ -65,16 +69,17 @@ extension BoardManager {
 
         var result: [StatusGroup] = []
 
-        func make(_ key: String, title: String) {
+        func make(_ key: String, baseTitle: String) {
             if let arr = grouped[key], !arr.isEmpty {
-                result.append(StatusGroup(title: title, statusKey: key, items: arr.sorted { $0.updated_at > $1.updated_at }))
+                let titled = "\(baseTitle) · \(arr.count)"
+                result.append(StatusGroup(title: titled, statusKey: key, items: arr.sorted { $0.updated_at > $1.updated_at }))
             }
         }
 
         // Order per plan: Waiting on You → Active → Blocked
-        make("waiting_on_user", title: "Waiting on You")
-        make("active", title: "Active")
-        make("blocked", title: "Blocked")
+        make("waiting_on_user", baseTitle: "Waiting on You")
+        make("active", baseTitle: "Active")
+        make("blocked", baseTitle: "Blocked")
 
         return result
     }

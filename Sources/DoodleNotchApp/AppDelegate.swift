@@ -8,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var notch: DynamicNotch<NotchContentView, NotchCompactIcon, EmptyView>!
     private var timer: Timer?
     private var collapseWork: DispatchWorkItem?
+    private var keyMonitor: Any?
 
     private let boardManager = BoardManager()
 
@@ -17,6 +18,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupNotch()
 
         scheduleTimer()
+        setupKeyMonitor()
 
         emit("agent-doodle notch ready. Board: \(BoardPath.resolved)")
     }
@@ -77,5 +79,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func emit(_ message: String) {
         FileHandle.standardError.write(Data("[doodle-notch] \(message)\n".utf8))
+    }
+
+    // App-level Cmd+Q handler for accessory app (no main menu). .keyboardShortcut inside Menu
+    // does not reliably work for keyDown in this context per platform behavior.
+    private func setupKeyMonitor() {
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            if event.modifierFlags.contains(.command),
+               event.charactersIgnoringModifiers?.lowercased() == "q" {
+                NSApplication.shared.terminate(nil)
+                return nil // consume the event
+            }
+            return event
+        }
     }
 }
