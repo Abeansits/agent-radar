@@ -3,3 +3,4 @@
 *.xcodeproj/
 Package.resolved
 board.json
+board.json.lock

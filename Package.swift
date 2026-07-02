@@ -30,6 +30,11 @@ let package = Package(
                 .product(name: "DynamicNotchKit", package: "DynamicNotchKit"),
             ],
             path: "Sources/DoodleNotchApp"
+        ),
+        .testTarget(
+            name: "DoodleCoreTests",
+            dependencies: ["DoodleCore"],
+            path: "Tests/DoodleCoreTests"
         )
     ]
 )
