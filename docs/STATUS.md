@@ -133,19 +133,30 @@ All MVP scope from the plan is implemented (as of 2026-07-02).
 
 ---
 
-## Verification (Plan Checklist)
+## Verification (Plan Checklist) — post-fix (2026-07-02)
 
-All items completed and passing:
+All items completed and passing (fixes applied on top of baseline 66d2326):
 
 1. Build + manual `set` / `board` — ✅
-2. **Concurrency test**: 5 parallel `doodle set` in loop — ✅ (0 updates lost, thanks to flock)
-3. Name normalization test — ✅ (`"Auth Middleware"` + `"auth middleware"` = single item)
-4. `done` exclusion + `--all` — ✅
+2. **Concurrency test**: scripts/stress.sh (60 parallel `doodle set` distinct names) — ✅ (60/60 every run; sidecar lock + empirical repro)
+3. Name normalization test — ✅ (now also in `swift test`)
+4. `done` exclusion + `--all` — ✅ (now also in `swift test`)
 5. Notch build + badge logic — ✅
 6. Age-dimming (backdated 7h item) — ✅ (shows "7h ago", dims in UI)
 7. Full loop + restart survival — ✅ (file-backed state)
 8. Human-readable `--pretty` — ✅
 9. Portability boundary — ✅ (Core/CLI have zero AppKit/SwiftUI)
+
+## Fixes Applied (post-baseline commits)
+
+- **fix: sidecar lock** — board.json.lock (stable inode) for flock; data uses .atomic. Prevents the inode race that lost updates at scale (previously ~26/60).
+- **fix: corrupt backup** — on decode fail inside withLock: rename to `board.json.corrupt-<ISO-ts>`, stderr warning, then fresh. No more silent wipe.
+- **fix: status validation** — CLI rejects unknown --status (e.g. "waiting") with exit 2 + list of valid: active, waiting_on_user, blocked, done.
+- **test: real tests + stress** — Added `Tests/DoodleCoreTests` (normalization, done-exclusion, corrupt backup) + `scripts/stress.sh`. `swift test` and 3x stress now pass.
+
+Stress test (`./scripts/stress.sh 60`) repeatedly proves the lock fix at scale: exactly 60 items survive 60 concurrent writers.
+
+See git log for the 4 separate fix commits.
 
 ---
 
