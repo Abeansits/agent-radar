@@ -8,9 +8,8 @@ let package = Package(
         .macOS(.v14)
     ],
     dependencies: [
-        // Local path during development (Arthur uses the same fork/branch).
-        // Swap to remote url + branch when publishing.
-        .package(path: "../DynamicNotchKit"),
+        // Same as Arthur: branch on the Abeansits fork (configurable animations support).
+        .package(url: "https://github.com/Abeansits/DynamicNotchKit", branch: "feature/configurable-animations"),
     ],
     targets: [
         .target(
