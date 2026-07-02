@@ -118,6 +118,13 @@ struct DoodleCLI {
             exit(2)
         }
 
+        // Validate status to the known set (typos like "waiting" make items invisible to UI/badge).
+        let validStatuses = ["active", "waiting_on_user", "blocked", "done"]
+        if let s = status, !validStatuses.contains(s) {
+            fputs("invalid --status '\(s)'. Valid values: \(validStatuses.joined(separator: ", "))\n", stderr)
+            exit(2)
+        }
+
         let item = try BoardStore.set(
             displayName: name,
             type: type,
