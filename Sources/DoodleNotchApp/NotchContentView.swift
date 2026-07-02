@@ -201,15 +201,10 @@ private struct ItemCard: View {
     }
 
     private func preferredBodyText(for item: DoodleItem) -> String {
-        if item.status == "waiting_on_user" {
-            return item.detail?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty
-                ?? item.summary.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty
-                ?? ""
-        } else {
-            return item.summary.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty
-                ?? item.detail?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty
-                ?? ""
-        }
+        let detail = item.detail?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty
+        let summary = item.summary.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty
+        let candidates = item.status == "waiting_on_user" ? [detail, summary] : [summary, detail]
+        return candidates.compactMap { $0 }.first ?? ""
     }
 
     private func backgroundForItem(_ item: DoodleItem) -> Color {

@@ -17,7 +17,7 @@ final class BoardManager {
         do {
             let all = try BoardStore.loadFiltered(includeDone: false)
             self.items = all
-            self.waitingCount = all.filter { $0.status == "waiting_on_user" }.count
+            self.waitingCount = Self.waitingCount(in: all)
         } catch {
             emit("Reload failed: \(error)")
             self.items = []
@@ -29,10 +29,14 @@ final class BoardManager {
     func reloadForBadge() {
         do {
             let all = try BoardStore.loadFiltered(includeDone: false)
-            self.waitingCount = all.filter { $0.status == "waiting_on_user" }.count
+            self.waitingCount = Self.waitingCount(in: all)
         } catch {
             // silent for timer path
         }
+    }
+
+    private static func waitingCount(in items: [DoodleItem]) -> Int {
+        items.filter { $0.status == "waiting_on_user" }.count
     }
 
     /// Full items grouped for the expanded view (called on appear/refresh)
