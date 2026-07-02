@@ -65,16 +65,17 @@ extension BoardManager {
 
         var result: [StatusGroup] = []
 
-        func make(_ key: String, title: String) {
+        func make(_ key: String, baseTitle: String) {
             if let arr = grouped[key], !arr.isEmpty {
-                result.append(StatusGroup(title: title, statusKey: key, items: arr.sorted { $0.updated_at > $1.updated_at }))
+                let titled = "\(baseTitle) · \(arr.count)"
+                result.append(StatusGroup(title: titled, statusKey: key, items: arr.sorted { $0.updated_at > $1.updated_at }))
             }
         }
 
         // Order per plan: Waiting on You → Active → Blocked
-        make("waiting_on_user", title: "Waiting on You")
-        make("active", title: "Active")
-        make("blocked", title: "Blocked")
+        make("waiting_on_user", baseTitle: "Waiting on You")
+        make("active", baseTitle: "Active")
+        make("blocked", baseTitle: "Blocked")
 
         return result
     }
