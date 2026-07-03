@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - Data Model (locked per plan-opencode.md)
 
-public struct DoodleItem: Codable, Sendable, Identifiable {
+public struct RadarItem: Codable, Sendable, Identifiable {
     /// Normalized key (trim + case-folded). Stable for updates.
     /// Also serves as the stable Identifiable id.
     public var name: String
@@ -46,9 +46,9 @@ public struct DoodleItem: Codable, Sendable, Identifiable {
 
 public struct Board: Codable, Sendable {
     public var version: Int
-    public var items: [DoodleItem]
+    public var items: [RadarItem]
 
-    public init(version: Int = 1, items: [DoodleItem] = []) {
+    public init(version: Int = 1, items: [RadarItem] = []) {
         self.version = version
         self.items = items
     }
@@ -64,19 +64,34 @@ public enum NameNormalizer {
     }
 }
 
-// MARK: - Board path resolution (DOODLE_BOARD_PATH wins)
+// MARK: - Board path resolution (RADAR_BOARD_PATH primary, DOODLE_ fallback for migration)
 
 public enum BoardPath {
     public static let defaultPath: String = {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
-        return (home as NSString).appendingPathComponent(".agent-doodle/board.json")
+        return (home as NSString).appendingPathComponent(".agent-radar/board.json")
     }()
 
     public static var resolved: String {
-        if let env = ProcessInfo.processInfo.environment["DOODLE_BOARD_PATH"], !env.isEmpty {
-            return env
+        let env = ProcessInfo.processInfo.environment
+        if let s = env["RADAR_BOARD_PATH"], !s.isEmpty {
+            return s
         }
-        return defaultPath
+        if let s = env["DOODLE_BOARD_PATH"], !s.isEmpty {
+            return s
+        }
+        let path = defaultPath
+        let oldPath = (FileManager.default.homeDirectoryForCurrentUser.path as NSString).appendingPathComponent(".agent-doodle/board.json")
+        let fm = FileManager.default
+        if !fm.fileExists(atPath: path) && fm.fileExists(atPath: oldPath) {
+            do {
+                try fm.copyItem(atPath: oldPath, toPath: path)
+                fputs("[agent-radar] Migrated board from ~/.agent-doodle/board.json (left as backup).\n", stderr)
+            } catch {
+                fputs("[agent-radar] Failed to migrate old board: \(error)\n", stderr)
+            }
+        }
+        return path
     }
 
     public static var resolvedURL: URL {
@@ -97,7 +112,7 @@ public enum BoardPath {
 
 // MARK: - Date helpers
 
-public enum DoodleDate {
+public enum RadarDate {
     private static func makeFormatter() -> ISO8601DateFormatter {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]

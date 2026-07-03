@@ -3,7 +3,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "agent-doodle",
+    name: "agent-radar",
     platforms: [
         .macOS(.v14)
     ],
@@ -13,27 +13,27 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "DoodleCore",
+            name: "RadarCore",
             dependencies: [],
-            path: "Sources/DoodleCore"
+            path: "Sources/RadarCore"
         ),
         .executableTarget(
-            name: "doodle",
-            dependencies: ["DoodleCore"],
-            path: "Sources/DoodleCLI"
+            name: "radar",
+            dependencies: ["RadarCore"],
+            path: "Sources/RadarCLI"
         ),
         .executableTarget(
-            name: "DoodleNotchApp",
+            name: "RadarNotchApp",
             dependencies: [
-                "DoodleCore",
+                "RadarCore",
                 .product(name: "DynamicNotchKit", package: "DynamicNotchKit"),
             ],
-            path: "Sources/DoodleNotchApp"
+            path: "Sources/RadarNotchApp"
         ),
         .testTarget(
-            name: "DoodleCoreTests",
-            dependencies: ["DoodleCore"],
-            path: "Tests/DoodleCoreTests"
+            name: "RadarCoreTests",
+            dependencies: ["RadarCore"],
+            path: "Tests/RadarCoreTests"
         )
     ]
 )

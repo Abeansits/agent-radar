@@ -1,16 +1,16 @@
 #!/bin/bash
 #
-# stress.sh — concurrency stress for doodle board locking
-# Spawns N parallel 'doodle set' with distinct names against a temp board.
+# stress.sh — concurrency stress for radar board locking
+# Spawns N parallel 'radar set' with distinct names against a temp board.
 # Fails unless exactly N items survive (tests sidecar lock prevents lost updates).
 #
 # Usage: ./scripts/stress.sh [N=60]
-# Requires: swift build available; runs against .build/debug/doodle
+# Requires: swift build available; runs against .build/debug/radar
 
 set -euo pipefail
 
 N=${1:-60}
-BOARD=$(mktemp -t "doodle-stress-$$-XXXXXX.json")
+BOARD=$(mktemp -t "radar-stress-$$-XXXXXX.json")
 LOCK="$BOARD.lock"
 
 cleanup() {
@@ -20,18 +20,18 @@ cleanup() {
 }
 trap cleanup EXIT
 
-export DOODLE_BOARD_PATH="$BOARD"
+export RADAR_BOARD_PATH="$BOARD"
 
-echo "Building doodle..."
-swift build --product doodle >/dev/null
+echo "Building radar..."
+swift build --product radar >/dev/null
 
-DOODLE_BIN=".build/debug/doodle"
+RADAR_BIN=".build/debug/radar"
 
 echo "Running stress: $N parallel sets against $BOARD ..."
 
 pids=()
 for i in $(seq 1 "$N"); do
-    "$DOODLE_BIN" set "task-$i" --type note --status active --summary "parallel-$i" >/dev/null 2>&1 &
+    "$RADAR_BIN" set "task-$i" --type note --status active --summary "parallel-$i" >/dev/null 2>&1 &
     pids+=($!)
 done
 
@@ -41,7 +41,7 @@ for pid in "${pids[@]}"; do
 done
 
 # Count items via board (JSON)
-COUNT=$( "$DOODLE_BIN" board | python3 -c '
+COUNT=$( "$RADAR_BIN" board | python3 -c '
 import sys, json, sys
 try:
     data = json.load(sys.stdin)

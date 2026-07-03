@@ -76,7 +76,7 @@ public enum BoardStore {
             } catch {
                 // Corrupt board: rename to preserve evidence, warn on stderr, start fresh.
                 // Do this under the lock to avoid races on the corrupt file itself.
-                let ts = DoodleDate.nowISO().replacingOccurrences(of: ":", with: "-")
+                let ts = RadarDate.nowISO().replacingOccurrences(of: ":", with: "-")
                 let corruptName = url.lastPathComponent + ".corrupt-" + ts
                 let corruptURL = url.deletingLastPathComponent().appendingPathComponent(corruptName)
                 do {
@@ -104,7 +104,7 @@ public enum BoardStore {
     }
 
     /// Convenience: load then filter/sort for presentation.
-    public static func loadFiltered(status: String? = nil, includeDone: Bool = false) throws -> [DoodleItem] {
+    public static func loadFiltered(status: String? = nil, includeDone: Bool = false) throws -> [RadarItem] {
         var items = try load().items
 
         if !includeDone {
@@ -130,9 +130,9 @@ public enum BoardStore {
         status: String? = nil,
         summary: String? = nil,
         detail: String? = nil
-    ) throws -> DoodleItem {
+    ) throws -> RadarItem {
         let normalized = NameNormalizer.normalize(displayName)
-        let now = DoodleDate.nowISO()
+        let now = RadarDate.nowISO()
         let resolvedSource = resolvedSource()
 
         return try withLock { board in
@@ -150,7 +150,7 @@ public enum BoardStore {
                 return item
             } else {
                 // New item
-                let item = DoodleItem(
+                let item = RadarItem(
                     name: normalized,
                     display_name: displayName,
                     type: type ?? "note",
@@ -166,7 +166,7 @@ public enum BoardStore {
         }
     }
 
-    public static func get(name: String) throws -> DoodleItem? {
+    public static func get(name: String) throws -> RadarItem? {
         let normalized = NameNormalizer.normalize(name)
         let board = try load()
         return board.items.first { $0.name == normalized }
@@ -183,13 +183,14 @@ public enum BoardStore {
 
     public static func resolvedSource() -> String {
         let env = ProcessInfo.processInfo.environment
+        if let s = env["RADAR_SOURCE"], !s.isEmpty { return s }
         if let s = env["DOODLE_SOURCE"], !s.isEmpty { return s }
         if let a = env["AGENT_NAME"], !a.isEmpty { return a }
         return "unknown"
     }
 
     /// For pretty printing / humans (used by CLI --pretty and future).
-    public static func prettyPrint(items: [DoodleItem]) -> String {
+    public static func prettyPrint(items: [RadarItem]) -> String {
         guard !items.isEmpty else { return "No items." }
 
         var lines: [String] = []
@@ -208,7 +209,7 @@ public enum BoardStore {
             }
             lines.append("\(title):")
             for item in group.sorted(by: { $0.updated_at > $1.updated_at }) {
-                let age = DoodleDate.relative(from: item.updated_at)
+                let age = RadarDate.relative(from: item.updated_at)
                 let detailLine = item.detail.map { "\n    \($0)" } ?? ""
                 lines.append("  • \(item.display_name) [\(item.type)] — \(item.summary)  (\(item.source), \(age))\(detailLine)")
             }

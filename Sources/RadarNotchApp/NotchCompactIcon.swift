@@ -1,5 +1,5 @@
 import SwiftUI
-import DoodleCore
+import RadarCore
 
 // Compact icon shown in the notch when collapsed. Shows a simple badge.
 

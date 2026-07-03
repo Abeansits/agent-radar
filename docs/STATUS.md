@@ -1,4 +1,4 @@
-# agent-doodle — Status & Implementation
+# agent-radar — Status & Implementation (formerly agent-radar)
 
 **Date:** 2026-07-02  
 **Based on:** `plan-opencode.md` (parallel plan by opencode)
@@ -7,11 +7,11 @@
 
 ## Overview
 
-`agent-doodle` is a lightweight external "state radiator" for conductor + multi-agent workflows.
+`agent-radar` is a lightweight external "state radiator" for conductor + multi-agent workflows.
 
-- Agents post structured status via a tiny CLI (`doodle set`).
-- Humans get a living dashboard in the MacBook notch (badge + hover) or via `doodle board --pretty`.
-- It is **not** an AI — it's a shared, lock-safe scratchpad (`~/.agent-doodle/board.json` or `$DOODLE_BOARD_PATH`).
+- Agents post structured status via a tiny CLI (`radar set`).
+- Humans get a living dashboard in the MacBook notch (badge + hover) or via `radar board --pretty`.
+- It is **not** an AI — it's a shared, lock-safe scratchpad (`~/.agent-radar/board.json` or `$RADAR_BOARD_PATH (fallback DOODLE_BOARD_PATH)`).
 
 The goal is to stop asking "what's cooking?" and let agents communicate clearly (especially "what I need from you").
 
@@ -24,8 +24,8 @@ The goal is to stop asking "what's cooking?" and let agents communicate clearly 
 | 1 | Locking in MVP | `flock(LOCK_EX)` around read-modify-write. Multiple agents will write on day 1. |
 | 2 | Single `set` command | Collapsed from 4 nouns. `type` + `status` handle the rest. |
 | 3 | Badge = `waiting_on_user` only | One clear rule. |
-| 4 | Source from env | `DOODLE_SOURCE` (fallback `AGENT_NAME`). Survives compaction. |
-| 5 | `DOODLE_BOARD_PATH` day one | Testable + overridable. |
+| 4 | Source from env | `RADAR_SOURCE (fallback DOODLE_SOURCE)` (fallback `AGENT_NAME`). Survives compaction. |
+| 5 | `RADAR_BOARD_PATH (fallback DOODLE_BOARD_PATH)` day one | Testable + overridable. |
 | 6 | Poll, don't watch | 5s `Timer` (simple, matches Arthur pattern). |
 | 7 | Build CLI + UI together | After locking the data model. |
 | 8 | Section order | **Waiting on You → Active → Blocked** |
@@ -63,20 +63,20 @@ Name normalization (trim + lower for key, keep `display_name`) and read-side dis
 - `detail`: the human-readable ask (optional but powerful)
 - `source`, `updated_at`
 
-`done` items are excluded from default `doodle board` reads.
+`done` items are excluded from default `radar board` reads.
 
 ---
 
 ## Architecture
 
 ```
-agent-doodle/
+agent-radar/
 ├── README.md
 ├── AGENTS.md
 ├── Package.swift
 ├── Sources/
 │   ├── DoodleCore/       # Pure Foundation (models + flock + store)
-│   ├── DoodleCLI/        # `doodle` executable
+│   ├── DoodleCLI/        # `radar` executable
 │   └── DoodleNotchApp/   # Mac notch UI
 ├── board.example.json
 └── docs/
@@ -96,7 +96,7 @@ All MVP scope from the plan is implemented (as of 2026-07-02).
   - `DoodleItem` + `Board` models + `Identifiable`
   - Name normalization (`trim` + `lowercased`)
   - `BoardStore` with real `flock(LOCK_EX)` + atomic writes
-  - Path resolution (`DOODLE_BOARD_PATH` or `~/.agent-doodle/board.json`)
+  - Path resolution (`RADAR_BOARD_PATH (fallback DOODLE_BOARD_PATH)` or `~/.agent-radar/board.json`)
   - Date helpers, relative time, `isStale()`, `prettyPrint()`
   - High-level `set` (partial updates), `get`, `remove`
 
@@ -126,7 +126,7 @@ All MVP scope from the plan is implemented (as of 2026-07-02).
 
 - SwiftPM with 3 targets:
   - `DoodleCore` (library)
-  - `doodle` (CLI executable)
+  - `radar` (CLI executable)
   - `DoodleNotchApp` (UI executable)
 - Depends on local `../DynamicNotchKit` (same branch as Arthur)
 - Clean build: `swift build`
@@ -138,7 +138,7 @@ All MVP scope from the plan is implemented (as of 2026-07-02).
 All items completed and passing (fixes applied on top of baseline 66d2326):
 
 1. Build + manual `set` / `board` — ✅
-2. **Concurrency test**: scripts/stress.sh (60 parallel `doodle set` distinct names) — ✅ (60/60 every run; sidecar lock + empirical repro)
+2. **Concurrency test**: scripts/stress.sh (60 parallel `radar set` distinct names) — ✅ (60/60 every run; sidecar lock + empirical repro)
 3. Name normalization test — ✅ (now also in `swift test`)
 4. `done` exclusion + `--all` — ✅ (now also in `swift test`)
 5. Notch build + badge logic — ✅
@@ -166,18 +166,18 @@ See git log for the 4 separate fix commits.
 
 ```bash
 # Post status (from any agent)
-DOODLE_SOURCE=conductor swift run doodle set "Auth middleware" \
+RADAR_SOURCE (fallback DOODLE_SOURCE)=conductor swift run radar set "Auth middleware" \
   --type session \
   --status waiting_on_user \
   --summary "Rate limiting in progress." \
   --detail "Decision: token bucket vs fixed window?"
 
 # Read (agents should do this on status questions)
-swift run doodle board                 # JSON (default)
-swift run doodle board --pretty        # Human readable
-swift run doodle board --status waiting_on_user
-swift run doodle get "auth middleware"
-swift run doodle rm "old task"
+swift run radar board                 # JSON (default)
+swift run radar board --pretty        # Human readable
+swift run radar board --status waiting_on_user
+swift run radar get "auth middleware"
+swift run radar rm "old task"
 ```
 
 ### Notch UI
@@ -198,13 +198,13 @@ swift run DoodleNotchApp
 
 Key rules agents should follow:
 
-- On any status/progress question: **first run `doodle board` (or `get`) and answer from it**. Do not re-derive from chat history.
+- On any status/progress question: **first run `radar board` (or `get`) and answer from it**. Do not re-derive from chat history.
 - Use stable names.
 - Put the real human ask in `--detail`.
 - Prefer updating by name over creating duplicates.
 - Set proper status (`waiting_on_user` drives the badge).
 
-The `doodle board` command prints a footer tip on stderr to re-seed the style after compaction.
+The `radar board` command prints a footer tip on stderr to re-seed the style after compaction.
 
 ---
 

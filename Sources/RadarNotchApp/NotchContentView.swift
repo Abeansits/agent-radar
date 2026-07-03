@@ -1,10 +1,10 @@
 import SwiftUI
 import AppKit
-import DoodleCore
+import RadarCore
 
 struct NotchContentView: View {
     var boardManager: BoardManager
-    @State private var displayItems: [DoodleItem] = []
+    @State private var displayItems: [RadarItem] = []
     @State private var showDebug = false
     @State private var optionMonitor: Any?
     @State private var quitHovered = false
@@ -41,7 +41,7 @@ struct NotchContentView: View {
         HStack(spacing: 8) {
             Image(systemName: "list.bullet.clipboard")
                 .foregroundStyle(.secondary)
-            Text("agent-doodle")
+            Text("agent-radar")
                 .font(.system(size: 15, weight: .semibold))
             Spacer()
             if boardManager.waitingCount > 0 {
@@ -52,7 +52,7 @@ struct NotchContentView: View {
             // Subtle quit affordance in corner of expanded view. Muted until hovered.
             // Cmd+Q is handled at AppDelegate level (real NSEvent monitor); Menu shortcut does not work reliably here.
             Menu {
-                Button("Quit Agent Doodle") {
+                Button("Quit Radar") {
                     NSApplication.shared.terminate(nil)
                 }
                 // TODO: Launch at Login, other preferences. Menu can grow.
@@ -69,7 +69,7 @@ struct NotchContentView: View {
     }
 
     private var emptyState: some View {
-        Text("No active items. Agents will post with `doodle set`.")
+        Text("No active items. Agents will post with `radar set`.")
             .font(.system(size: 15))
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -154,14 +154,14 @@ private struct SectionHeader: View {
 }
 
 private struct ItemCard: View {
-    let item: DoodleItem
+    let item: RadarItem
     let boardManager: BoardManager
     let showDebug: Bool
 
     @State private var isExpanded: Bool
     @State private var isHovered = false
 
-    init(item: DoodleItem, boardManager: BoardManager, showDebug: Bool = false) {
+    init(item: RadarItem, boardManager: BoardManager, showDebug: Bool = false) {
         self.item = item
         self.boardManager = boardManager
         self.showDebug = showDebug
@@ -192,7 +192,7 @@ private struct ItemCard: View {
                 Spacer()
 
                 // metadata: just time, or source·time in debug view
-                let age = DoodleDate.relative(from: item.updated_at)
+                let age = RadarDate.relative(from: item.updated_at)
                 let meta = showDebug ? "\(item.source) · \(age)" : age
                 Text(meta)
                     .font(.system(size: 12))
@@ -247,7 +247,7 @@ private struct ItemCard: View {
             RoundedRectangle(cornerRadius: 6)
                 .stroke(borderColor(for: item.status), lineWidth: item.status == "waiting_on_user" ? 1 : 0)
         )
-        .opacity( (item.status == "blocked" ? 0.65 : 1.0) * (DoodleDate.isStale(item.updated_at) ? 0.55 : 1.0) )
+        .opacity( (item.status == "blocked" ? 0.65 : 1.0) * (RadarDate.isStale(item.updated_at) ? 0.55 : 1.0) )
         .onHover { hovering in
             isHovered = hovering
         }
@@ -284,7 +284,7 @@ private extension String {
     var nonEmpty: String? { isEmpty ? nil : self }
 }
 
-// Delegate to the correctly implemented version in DoodleCore (fixes UTF-16 vs character offset bug for non-ASCII).
+// Delegate to the correctly implemented version in RadarCore (fixes UTF-16 vs character offset bug for non-ASCII).
 private func attributedStringWithLinks(from text: String) -> AttributedString {
-    DoodleCore.attributedStringWithLinks(from: text)
+    RadarCore.attributedStringWithLinks(from: text)
 }

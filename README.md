@@ -1,10 +1,12 @@
-# agent-doodle
+# agent-radar
 
 A tiny external "state radiator" for conductor + multi-agent workflows.
 
-Agents write structured status via the `doodle` CLI. You glance at a living dashboard in your MacBook notch (or `doodle board --pretty` on any machine).
+Agents write structured status via the `radar` CLI. You glance at a living dashboard in your MacBook notch (or `radar board --pretty` on any machine).
 
-It is **not** an AI. It is a shared, lock-safe scratchpad in `~/.agent-doodle/board.json` (or `$DOODLE_BOARD_PATH`).
+It is **not** an AI. It is a shared, lock-safe scratchpad in `~/.agent-radar/board.json` (or `$RADAR_BOARD_PATH`).
+
+**Formerly known as agent-doodle (CLI: doodle).**
 
 ## Why
 
@@ -17,23 +19,23 @@ It is **not** an AI. It is a shared, lock-safe scratchpad in `~/.agent-doodle/bo
 
 ```bash
 # CLI (any machine)
-swift run doodle set "My task" --status active --summary "Doing the thing"
-swift run doodle board --pretty
+swift run radar set "My task" --status active --summary "Doing the thing"
+swift run radar board --pretty
 
 # Notch UI (macOS)
-swift run DoodleNotchApp
+swift run RadarNotchApp
 ```
 
 ## Commands
 
 ```
-doodle set "<name>" [--type TYPE] [--status STATUS] [--summary "..."] [--detail "..."]
-doodle board [--status X] [--all] [--pretty]
-doodle get "<name>"
-doodle rm "<name>"
+radar set "<name>" [--type TYPE] [--status STATUS] [--summary "..."] [--detail "..."]
+radar board [--status X] [--all] [--pretty]
+radar get "<name>"
+radar rm "<name>"
 ```
 
-See `doodle --help`.
+See `radar --help`.
 
 ## Data Model (small)
 
@@ -63,14 +65,14 @@ Read `AGENTS.md`. The most important parts:
 
 ## Portability
 
-`DoodleCore` + `doodle` CLI have **zero** macOS-only imports. The JSON + CLI are the portable product. The notch is one Mac frontend.
+`RadarCore` + `radar` CLI have **zero** macOS-only imports. The JSON + CLI are the portable product. The notch is one Mac frontend.
 
 ## Development Notes
 
 - Built with SwiftPM + DynamicNotchKit (lifted patterns from Arthur).
 - Locking via `flock(LOCK_EX)` around mutations.
 - See `plan-opencode.md` for the full rationale and verification checklist.
-- See `docs/STATUS.md` for current implementation status + verification results (2026-07-02).
+- See `docs/STATUS.md` for current implementation status + verification results (post-rename to agent-radar).
 
 ## MVP Scope (done)
 

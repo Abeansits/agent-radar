@@ -1,12 +1,12 @@
 import Foundation
-import DoodleCore
+import RadarCore
 
-// Simple CLI for agent-doodle
+// Simple CLI for agent-radar
 // Usage:
-//   doodle set "<name>" [--type X] [--status Y] [--summary "one line"] [--detail "rich text"]
-//   doodle board [--status waiting_on_user] [--all] [--pretty]
-//   doodle get "<name>"
-//   doodle rm "<name>"
+//   radar set "<name>" [--type X] [--status Y] [--summary "one line"] [--detail "rich text"]
+//   radar board [--status waiting_on_user] [--all] [--pretty]
+//   radar get "<name>"
+//   radar rm "<name>"
 
 @main
 struct DoodleCLI {
@@ -42,30 +42,30 @@ struct DoodleCLI {
 
     static func printUsage() {
         let usage = """
-        doodle — living status board for multi-agent work
+        radar — living status board for multi-agent work
 
         Commands:
-          doodle set "<name>" [--type TYPE] [--status STATUS] [--summary "text"] [--detail "text"]
+          radar set "<name>" [--type TYPE] [--status STATUS] [--summary "text"] [--detail "text"]
               Create or update an item (name is stable key after normalization).
 
-          doodle board [--status STATUS] [--all] [--pretty]
+          radar board [--status STATUS] [--all] [--pretty]
               Print board. JSON by default (for agents). --pretty for humans.
               Excludes done items unless --all.
 
-          doodle get "<name>"
+          radar get "<name>"
               Print single item as JSON (or "null" if not found).
 
-          doodle rm "<name>"
+          radar rm "<name>"
               Remove an item.
 
         Env:
-          DOODLE_BOARD_PATH   Override board file (default ~/.agent-doodle/board.json)
-          DOODLE_SOURCE       Attribution (fallback AGENT_NAME, then "unknown")
+          RADAR_BOARD_PATH    Override board file (default ~/.agent-radar/board.json)
+          RADAR_SOURCE        Attribution (fallback DOODLE_SOURCE/AGENT_NAME)
 
         Examples:
-          doodle set "Auth middleware" --type session --status waiting_on_user --summary "Rate limit work" --detail "Token bucket vs fixed?"
-          doodle board --pretty
-          DOODLE_SOURCE=conductor doodle set "JWT decision" --status active --summary "Chose sessions"
+          radar set "Auth middleware" --type session --status waiting_on_user --summary "Rate limit work" --detail "Token bucket vs fixed?"
+          radar board --pretty
+          RADAR_SOURCE=conductor radar set "JWT decision" --status active --summary "Chose sessions"
         """
         print(usage)
     }
@@ -166,7 +166,7 @@ struct DoodleCLI {
         if pretty {
             print(BoardStore.prettyPrint(items: items))
             // Footer hint on stderr so agents see it on reads (conductor)
-            fputs("\nTIP: use stable names, put the human-readable ask in --detail, prefer updating existing items by name. Read with `doodle board` on status questions.\n", stderr)
+            fputs("\nTIP: use stable names, put the human-readable ask in --detail, prefer updating existing items by name. Read with `radar board` on status questions.\n", stderr)
         } else {
             // Default: JSON array for agents / machines
             let data = try JSONEncoder().encode(items)
@@ -174,7 +174,7 @@ struct DoodleCLI {
                 print(s)
             }
             // Footer hint (subtle, on stderr so it doesn't break JSON consumers but conductors often read stderr or logs)
-            fputs("\nTIP: use stable names, put the human-readable ask in --detail, prefer updating existing items by name. Read with `doodle board` on status questions.\n", stderr)
+            fputs("\nTIP: use stable names, put the human-readable ask in --detail, prefer updating existing items by name. Read with `radar board` on status questions.\n", stderr)
         }
     }
 

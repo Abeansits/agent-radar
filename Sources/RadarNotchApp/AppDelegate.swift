@@ -1,7 +1,7 @@
 import AppKit
 import DynamicNotchKit
 import SwiftUI
-import DoodleCore
+import RadarCore
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -20,7 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         scheduleTimer()
         setupKeyMonitor()
 
-        emit("agent-doodle notch ready. Board: \(BoardPath.resolved)")
+        emit("agent-radar notch ready. Board: \(BoardPath.resolved)")
     }
 
     // MARK: - Notch
@@ -78,7 +78,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func emit(_ message: String) {
-        FileHandle.standardError.write(Data("[doodle-notch] \(message)\n".utf8))
+        FileHandle.standardError.write(Data("[radar-notch] \(message)\n".utf8))
     }
 
     // App-level Cmd+Q handler for accessory app (no main menu). .keyboardShortcut inside Menu

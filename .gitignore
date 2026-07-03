@@ -4,3 +4,4 @@
 Package.resolved
 board.json
 board.json.lock
+# (defaults are now ~/.agent-radar/ ; old ~/.agent-doodle/ supported for migration)

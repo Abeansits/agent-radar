@@ -1,7 +1,7 @@
 import XCTest
-@testable import DoodleCore
+@testable import RadarCore
 
-final class DoodleCoreTests: XCTestCase {
+final class RadarCoreTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
@@ -85,7 +85,7 @@ final class DoodleCoreTests: XCTestCase {
     func testAttributedStringWithLinks_nonASCII() {
         // Emoji/glyphs (non-ASCII) before URLs must not throw off UTF-16 vs character offsets.
         let input = "❓ check github.com/foo/bar 🔨 https://example.com"
-        let attr = DoodleCore.attributedStringWithLinks(from: input)
+        let attr = RadarCore.attributedStringWithLinks(from: input)
 
         let links = attr.runs.compactMap { run -> String? in
             if run.link != nil {
@@ -99,7 +99,7 @@ final class DoodleCoreTests: XCTestCase {
     func testAttributedStringWithLinks_doesNotClobberFullURL() {
         // http:// full URL must remain unchanged; bare domain gets https
         let input = "http://example.com and plain example.org"
-        let attr = DoodleCore.attributedStringWithLinks(from: input)
+        let attr = RadarCore.attributedStringWithLinks(from: input)
 
         let links = attr.runs.compactMap { run -> (String, String?)? in
             if let link = run.link {

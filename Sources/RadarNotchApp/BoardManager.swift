@@ -1,12 +1,12 @@
 import Foundation
 import Observation
 import SwiftUI
-import DoodleCore
+import RadarCore
 
 @Observable
 @MainActor
 final class BoardManager {
-    var items: [DoodleItem] = []
+    var items: [RadarItem] = []
     var waitingCount: Int = 0
 
     var onCompactHover: ((Bool) -> Void)?
@@ -35,12 +35,12 @@ final class BoardManager {
         }
     }
 
-    private static func waitingCount(in items: [DoodleItem]) -> Int {
+    private static func waitingCount(in items: [RadarItem]) -> Int {
         items.filter { $0.status == "waiting_on_user" }.count
     }
 
     /// Full items grouped for the expanded view (called on appear/refresh)
-    func loadForDisplay() -> [DoodleItem] {
+    func loadForDisplay() -> [RadarItem] {
         do {
             return try BoardStore.loadFiltered(includeDone: false)
         } catch {
@@ -54,7 +54,7 @@ final class BoardManager {
     }
 
     /// Mark item done using the locked set path (first UI write path).
-    func markDone(_ item: DoodleItem) {
+    func markDone(_ item: RadarItem) {
         do {
             _ = try BoardStore.set(displayName: item.display_name, status: "done")
             reload()
@@ -70,10 +70,10 @@ extension BoardManager {
         let id = UUID()
         let title: String
         let statusKey: String
-        let items: [DoodleItem]
+        let items: [RadarItem]
     }
 
-    func groupedItems(_ raw: [DoodleItem]) -> [StatusGroup] {
+    func groupedItems(_ raw: [RadarItem]) -> [StatusGroup] {
         let filtered = raw.filter { $0.status != "done" }
         let grouped = Dictionary(grouping: filtered, by: { $0.status })
 
