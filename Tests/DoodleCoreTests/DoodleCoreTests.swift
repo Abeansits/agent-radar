@@ -95,4 +95,29 @@ final class DoodleCoreTests: XCTestCase {
         }
         XCTAssertEqual(links, ["github.com/foo/bar", "https://example.com"])
     }
+
+    func testAttributedStringWithLinks_doesNotClobberFullURL() {
+        // http:// full URL must remain unchanged; bare domain gets https
+        let input = "http://example.com and plain example.org"
+        let attr = DoodleCore.attributedStringWithLinks(from: input)
+
+        let links = attr.runs.compactMap { run -> (String, String?)? in
+            if let link = run.link {
+                return (String(attr[run.range].characters), link.absoluteString)
+            }
+            return nil
+        }
+
+        XCTAssertEqual(links.count, 2)
+
+        // http one should be present with http link
+        let httpLink = links.first(where: { $0.0.hasPrefix("http://example.com") })
+        XCTAssertNotNil(httpLink)
+        XCTAssertTrue(httpLink?.1?.hasPrefix("http://") ?? false)
+
+        // bare one as https
+        let httpsLink = links.first(where: { $0.0 == "example.org" })
+        XCTAssertNotNil(httpsLink)
+        XCTAssertTrue(httpsLink?.1?.hasPrefix("https://example.org") ?? false)
+    }
 }

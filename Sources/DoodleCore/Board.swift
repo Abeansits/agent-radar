@@ -143,6 +143,7 @@ public enum DoodleDate {
 // character offsets using String.Index conversion. Handles non-ASCII (glyphs, emoji).
 public func attributedStringWithLinks(from text: String) -> AttributedString {
     var result = AttributedString(text)
+    var fullURLRanges: [Range<String.Index>] = []
 
     // Full URLs via NSDataDetector (UTF-16 NSRange -> String.Index -> Attributed char offset)
     if let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) {
@@ -155,11 +156,15 @@ public func attributedStringWithLinks(from text: String) -> AttributedString {
                 let start = result.index(result.startIndex, offsetByCharacters: lowerOffset)
                 let end = result.index(start, offsetByCharacters: charCount)
                 result[start..<end].link = url
+                // Only protect actual full URLs (with scheme) from bare-domain https forcing
+                if text[stringRange].lowercased().hasPrefix("http") {
+                    fullURLRanges.append(stringRange)
+                }
             }
         }
     }
 
-    // Bare domains e.g. github.com/foo/bar (no scheme) - same correct conversion
+    // Bare domains e.g. github.com/foo/bar (no scheme) - skip only if overlaps a full-URL range (protect http:// etc. from being forced to https)
     if let bare = try? NSRegularExpression(pattern: #"\b([a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(/[a-zA-Z0-9./_-]*)?)\b"#, options: []) {
         let nsText = text as NSString
         let matches = bare.matches(in: text, options: [], range: NSRange(location: 0, length: nsText.length))
@@ -168,6 +173,9 @@ public func attributedStringWithLinks(from text: String) -> AttributedString {
             if !domain.lowercased().hasPrefix("http"),
                let url = URL(string: "https://" + domain),
                let stringRange = Range(match.range, in: text) {
+                if fullURLRanges.contains(where: { $0.overlaps(stringRange) }) {
+                    continue
+                }
                 let lowerOffset = text.distance(from: text.startIndex, to: stringRange.lowerBound)
                 let charCount = text.distance(from: stringRange.lowerBound, to: stringRange.upperBound)
                 let start = result.index(result.startIndex, offsetByCharacters: lowerOffset)
