@@ -24,13 +24,30 @@ This is the **house style** for posting to the shared status board. It survives 
 
 5. **Prefer updating an existing item by name over creating new ones.** The board is a living dashboard, not a log.
 
-6. **Set the right status:**
-   - `active` — working on it, no immediate user action needed.
-   - `waiting_on_user` — this is what drives the badge. Use when you need input/decision/answer.
-   - `blocked` — can't proceed (external dep, etc.).
+6. **Set the right status (see semantics above):**
+   - `active` — working on it, no immediate human action needed.
+   - `waiting_on_user` — actionable by the human (drives badge and "Waiting on You").
+   - `blocked` — stuck on something *not* the human.
    - `done` — finished (excluded from normal `doodle board` reads).
 
 7. **Source attribution happens automatically** from `DOODLE_SOURCE` or `AGENT_NAME` env. Set it in your shell/session so humans know who wrote it.
+
+## Single-writer model (conductor curates)
+
+The board is **single-writer** in practice: the conductor is the curator who owns the overall state. Individual sessions/agents **report** status, questions, and blockers to the conductor (via `doodle set`), rather than directly editing or assuming ownership of the board.
+
+- Sessions post facts and asks.
+- Conductor reads the board, acts on `waiting_on_user` items, clears/sets statuses as appropriate, and keeps the picture coherent.
+- Do not treat the board as a free-for-all chat log or per-agent scratchpad.
+
+## Status semantics (human actionability)
+
+- `waiting_on_user`: actionable by the **human** (conductor). This is what the badge and "Waiting on You" section highlight.
+- `blocked`: stuck on something that is **not** the human (external dependency, other agent, infra, etc.).
+- `active`: in progress, no immediate human action required.
+- `done`: finished (hidden from default reads).
+
+When posting, choose the status that accurately signals who needs to do what next.
 
 ## Typical Flow (Conductor Example)
 

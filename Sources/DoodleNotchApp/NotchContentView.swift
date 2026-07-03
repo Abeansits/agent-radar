@@ -26,7 +26,7 @@ struct NotchContentView: View {
             footer
         }
         .padding(12)
-        .frame(width: 380)
+        .frame(width: 480)  // ~25-30% larger for room-glance
         .onAppear {
             refresh()
             setupOptionMonitor()
@@ -42,11 +42,11 @@ struct NotchContentView: View {
             Image(systemName: "list.bullet.clipboard")
                 .foregroundStyle(.secondary)
             Text("agent-doodle")
-                .font(.system(size: 14, weight: .semibold))
+                .font(.system(size: 15, weight: .semibold))
             Spacer()
             if boardManager.waitingCount > 0 {
                 Label("\(boardManager.waitingCount) waiting", systemImage: "exclamationmark.triangle.fill")
-                    .font(.system(size: 11))
+                    .font(.system(size: 12))
                     .foregroundStyle(.red)
             }
             // Subtle quit affordance in corner of expanded view. Muted until hovered.
@@ -58,7 +58,7 @@ struct NotchContentView: View {
                 // TODO: Launch at Login, other preferences. Menu can grow.
             } label: {
                 Image(systemName: "gearshape")
-                    .font(.system(size: 10))
+                    .font(.system(size: 11))
                     .foregroundStyle(.tertiary)
                     .opacity(quitHovered ? 0.8 : 0.15)
             }
@@ -70,7 +70,7 @@ struct NotchContentView: View {
 
     private var emptyState: some View {
         Text("No active items. Agents will post with `doodle set`.")
-            .font(.system(size: 13))
+            .font(.system(size: 15))
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.vertical, 8)
@@ -82,7 +82,7 @@ struct NotchContentView: View {
                 ForEach(boardManager.groupedItems(displayItems)) { group in
                     SectionHeader(title: group.title)
                     ForEach(group.items) { item in
-                        ItemCard(item: item)
+                        ItemCard(item: item, boardManager: boardManager, showDebug: showDebug)
                     }
                 }
             }
@@ -95,14 +95,14 @@ struct NotchContentView: View {
             if showDebug {
                 HStack {
                     Text("Board: \(shortBoardPath())")
-                        .font(.system(size: 9))
+                        .font(.system(size: 11))
                         .foregroundStyle(.tertiary)
                     Spacer()
                     Button("Refresh") {
                         refresh()
                     }
                     .buttonStyle(.plain)
-                    .font(.system(size: 10))
+                    .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                 }
             }
@@ -147,7 +147,7 @@ private struct SectionHeader: View {
     let title: String
     var body: some View {
         Text(title.uppercased())
-            .font(.system(size: 11, weight: .medium))
+            .font(.system(size: 12, weight: .medium))
             .foregroundStyle(.secondary)
             .padding(.top, 4)
     }
@@ -155,43 +155,106 @@ private struct SectionHeader: View {
 
 private struct ItemCard: View {
     let item: DoodleItem
+    let boardManager: BoardManager
+    let showDebug: Bool
+
+    @State private var isExpanded: Bool
+    @State private var isHovered = false
+
+    init(item: DoodleItem, boardManager: BoardManager, showDebug: Bool = false) {
+        self.item = item
+        self.boardManager = boardManager
+        self.showDebug = showDebug
+        _isExpanded = State(initialValue: item.status == "waiting_on_user")
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            // Line 1: glyph + name (body) | metadata right (source · time)
+        VStack(alignment: .leading, spacing: 3) {
+            // Line: glyph + name + summary (one line) | time (+ source in debug) | chevron | hover done
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 if let glyph = glyphFor(type: item.type) {
                     Text(glyph)
-                        .font(.system(size: 13))
+                        .font(.system(size: 14))
                 }
                 Text(item.display_name)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold))
                     .lineLimit(1)
+
+                // summary in the one line (glanceable)
+                if let summary = item.summary.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty {
+                    Text(summary)
+                        .font(.system(size: 15))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
 
                 Spacer()
 
-                Text("\(item.source) · \(DoodleDate.relative(from: item.updated_at))")
-                    .font(.system(size: 10))
+                // metadata: just time, or source·time in debug view
+                let age = DoodleDate.relative(from: item.updated_at)
+                let meta = showDebug ? "\(item.source) · \(age)" : age
+                Text(meta)
+                    .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.tail)
+
+                if hasDetail {
+                    Button {
+                        isExpanded.toggle()
+                    } label: {
+                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                if isHovered {
+                    Button {
+                        boardManager.markDone(item)
+                    } label: {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Mark done")
+                }
             }
 
-            // Line 2: single body line (detail preferred for waiting_on_user, summary otherwise)
-            let bodyText = preferredBodyText(for: item)
-            if !bodyText.isEmpty {
-                Text(bodyText)
-                    .font(.system(size: 13))
+            // detail revealed on expand (default for waiting_on_user)
+            if isExpanded, let detail = item.detail?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty {
+                let detailAttr = attributedStringWithLinks(from: detail)
+                Text(detailAttr)
+                    .font(.system(size: 15))
                     .foregroundStyle(.primary)
-                    .lineLimit(2)
+                    .environment(\.openURL, OpenURLAction { url in
+                        NSWorkspace.shared.open(url)
+                        return .handled
+                    })
+                    .lineLimit(4)
+                    .padding(.top, 1)
             }
         }
         .padding(8)
         .background(
             RoundedRectangle(cornerRadius: 6)
-                .fill(backgroundForItem(item))
+                .fill(bgColor(for: item.status))
         )
-        .opacity(DoodleDate.isStale(item.updated_at) ? 0.55 : 1.0)
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(borderColor(for: item.status), lineWidth: item.status == "waiting_on_user" ? 1 : 0)
+        )
+        .opacity( (item.status == "blocked" ? 0.65 : 1.0) * (DoodleDate.isStale(item.updated_at) ? 0.55 : 1.0) )
+        .onHover { hovering in
+            isHovered = hovering
+        }
+    }
+
+    private var hasDetail: Bool {
+        item.detail?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty != nil
     }
 
     private func glyphFor(type: String) -> String? {
@@ -204,24 +267,53 @@ private struct ItemCard: View {
         }
     }
 
-    private func preferredBodyText(for item: DoodleItem) -> String {
-        let detail = item.detail?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty
-        let summary = item.summary.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty
-        let candidates = item.status == "waiting_on_user" ? [detail, summary] : [summary, detail]
-        return candidates.compactMap { $0 }.first ?? ""
+    private func bgColor(for status: String) -> Color {
+        switch status {
+        case "waiting_on_user": return Color.red.opacity(0.12)
+        case "blocked": return Color.yellow.opacity(0.08)
+        default: return Color.gray.opacity(0.04)
+        }
     }
 
-    private func backgroundForItem(_ item: DoodleItem) -> Color {
-        if item.status == "waiting_on_user" {
-            return Color.red.opacity(0.06)
-        }
-        if DoodleDate.isStale(item.updated_at) {
-            return Color.gray.opacity(0.06)
-        }
-        return Color.gray.opacity(0.04)
+    private func borderColor(for status: String) -> Color {
+        status == "waiting_on_user" ? Color.red.opacity(0.4) : .clear
     }
 }
 
 private extension String {
     var nonEmpty: String? { isEmpty ? nil : self }
+}
+
+// Helper for E: clickable links (AttributedString + custom open via NSWorkspace)
+// Supports bare domains (e.g. github.com/foo) by prefixing https, and full URLs.
+private func attributedStringWithLinks(from text: String) -> AttributedString {
+    var result = AttributedString(text)
+
+    // Full URLs
+    if let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) {
+        let nsRange = NSRange(location: 0, length: text.utf16.count)
+        for match in detector.matches(in: text, options: [], range: nsRange) {
+            if let url = match.url {
+                let start = result.index(result.startIndex, offsetByCharacters: match.range.location)
+                let end = result.index(start, offsetByCharacters: match.range.length)
+                result[start..<end].link = url
+            }
+        }
+    }
+
+    // Bare domains (github.com/foo)
+    if let bare = try? NSRegularExpression(pattern: #"\b([a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(/[a-zA-Z0-9./_-]*)?)\b"#, options: []) {
+        let nsText = text as NSString
+        let matches = bare.matches(in: text, options: [], range: NSRange(location: 0, length: nsText.length))
+        for match in matches.reversed() {
+            let domain = nsText.substring(with: match.range)
+            if !domain.lowercased().hasPrefix("http"),
+               let url = URL(string: "https://" + domain) {
+                let start = result.index(result.startIndex, offsetByCharacters: match.range.location)
+                let end = result.index(start, offsetByCharacters: match.range.length)
+                result[start..<end].link = url
+            }
+        }
+    }
+    return result
 }

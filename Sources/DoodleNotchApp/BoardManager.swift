@@ -52,6 +52,16 @@ final class BoardManager {
     private func emit(_ message: String) {
         FileHandle.standardError.write(Data("[BoardManager] \(message)\n".utf8))
     }
+
+    /// Mark item done using the locked set path (first UI write path).
+    func markDone(_ item: DoodleItem) {
+        do {
+            _ = try BoardStore.set(displayName: item.display_name, status: "done")
+            reload()
+        } catch {
+            emit("Failed to mark done: \(error)")
+        }
+    }
 }
 
 // Group helper for UI
