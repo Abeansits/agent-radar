@@ -26,7 +26,7 @@ struct NotchContentView: View {
             footer
         }
         .padding(12)
-        .frame(width: 480)  // ~25-30% larger for room-glance
+        .frame(width: 640)  // round 3: +~33% (decisively larger expanded panel; text kept proportionate)
         .onAppear {
             refresh()
             setupOptionMonitor()
@@ -87,7 +87,7 @@ struct NotchContentView: View {
                 }
             }
         }
-        .frame(maxHeight: 280)
+        .frame(maxHeight: 380)
     }
 
     private var footer: some View {
@@ -165,12 +165,16 @@ private struct ItemCard: View {
         self.item = item
         self.boardManager = boardManager
         self.showDebug = showDebug
-        _isExpanded = State(initialValue: item.status == "waiting_on_user")
+        let trimmedDetail = item.detail?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        _isExpanded = State(initialValue: item.status == "waiting_on_user" && !trimmedDetail.isEmpty)
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
-            // Line: glyph + name + summary (one line) | time (+ source in debug) | chevron | hover done
+            // Entire card row is now the tap target for expand/collapse *iff* has non-empty detail.
+            // Chevron is passive visual only (no longer a tiny button).
+            // ✓ done button is isolated hover control: its clicks must never expand; row clicks must never mark done.
+            // No chevron + no row action when detail is nil/empty (after trim).
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 if let glyph = glyphFor(type: item.type) {
                     Text(glyph)
@@ -201,16 +205,26 @@ private struct ItemCard: View {
                     .truncationMode(.tail)
 
                 if hasDetail {
-                    Button {
-                        isExpanded.toggle()
-                    } label: {
-                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                            .font(.system(size: 10))
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
+                    // Passive indicator only — the row tap handles expand.
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                        .padding(.leading, 2)
                 }
 
+                // Always reserve trailing slot for the done button (hover only).
+                // Keeps layout stable and guarantees non-overlapping hit areas.
+                Color.clear
+                    .frame(width: 22, height: 16)
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if hasDetail {
+                    isExpanded.toggle()
+                }
+                // else: no detail → no chevron → row click is a no-op (no empty expansion)
+            }
+            .overlay(alignment: .trailing) {
                 if isHovered {
                     Button {
                         boardManager.markDone(item)
@@ -221,10 +235,11 @@ private struct ItemCard: View {
                     }
                     .buttonStyle(.plain)
                     .help("Mark done")
+                    .padding(.trailing, 2)
                 }
             }
 
-            // detail revealed on expand (default for waiting_on_user)
+            // detail revealed on expand (default for waiting_on_user items that have detail)
             if isExpanded, let detail = item.detail?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty {
                 let detailAttr = attributedStringWithLinks(from: detail)
                 Text(detailAttr)
