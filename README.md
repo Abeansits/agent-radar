@@ -8,6 +8,8 @@ It is **not** an AI. It is a shared, lock-safe scratchpad in `~/.agent-radar/boa
 
 **Formerly known as agent-doodle (CLI: doodle).**
 
+<!-- Screenshot of the notch UI (compact badge + expanded panel) goes here. -->
+
 ## Why
 
 - Stop asking "what's cooking?"
@@ -15,16 +17,37 @@ It is **not** an AI. It is a shared, lock-safe scratchpad in `~/.agent-radar/boa
 - Survives agent compaction via disciplined reads + tiny footer hints
 - Works for the conductor *and* any number of parallel agents (locking built-in)
 
-## Install / Run (dev)
+## Install
+
+### CLI (`radar`)
 
 ```bash
-# CLI (any machine)
-swift run radar set "My task" --status active --summary "Doing the thing"
-swift run radar board --pretty
+git clone https://github.com/Abeansits/agent-radar.git
+cd agent-radar
 
-# Notch UI (macOS)
-swift run RadarNotchApp
+# Build release CLI and install to ~/.local/bin
+swift build -c release
+mkdir -p ~/.local/bin
+install -m 755 .build/release/radar ~/.local/bin/radar
+
+# Make sure ~/.local/bin is on your PATH (add to ~/.zprofile or ~/.zshrc if needed)
+export PATH="$HOME/.local/bin:$PATH"
+# (restart your shell or `source` the profile)
+
+radar --help
 ```
+
+### Notch dashboard (macOS)
+
+```bash
+# From the repo dir
+swift build -c release
+.build/release/RadarNotchApp
+```
+
+The app is an accessory (no Dock icon). It lives in the notch and expands on hover. Use the gear (top-right, hover-revealed) → Quit or press ⌘Q.
+
+For auto-start at login, wire up a LaunchAgent plist pointing at the release binary (or the in-app option once implemented).
 
 ## Commands
 
@@ -37,29 +60,41 @@ radar rm "<name>"
 
 See `radar --help`.
 
-## Data Model (small)
+## Data Model
 
-See `plan-opencode.md` and `board.example.json`.
+Board items are small JSON objects:
 
-Key points:
-- `name` is normalized (stable key)
-- `display_name` preserves last human casing
-- Badge = count of `status == "waiting_on_user"`
-- `done` items hidden from default board reads
+```json
+{
+  "name": "auth middleware",           // stable normalized key (trim + lower)
+  "display_name": "Auth Middleware",   // last human casing written
+  "type": "session",                   // free-form (session, question, blocker, note...)
+  "status": "waiting_on_user",         // active | waiting_on_user | blocked | done
+  "summary": "Rate limiting in progress.",
+  "detail": "Decision: token bucket vs fixed window?",  // the ask / context (optional)
+  "source": "conductor",
+  "updated_at": "2026-..."
+}
+```
+
+- Badge = number of `waiting_on_user` items.
+- Default `radar board` hides `done` items (use `--all` to see them).
+- See `board.example.json` for a full example.
 
 ## Notch UI
 
-- Compact: clipboard icon + red badge for waiting items
-- Hover to expand: sections **Waiting on You / Active / Blocked**
-- Cards show name, summary, detail (if present), source, relative time
-- Stale items (>6h) are dimmed
-- Polls the file ~every 5s for the badge
+- Compact: clipboard icon + red badge (only for `waiting_on_user` count)
+- Hover to expand into **Waiting on You / Active / Blocked** sections
+- Larger panel (640 px). Cards with a `detail` ask: tap the **entire row** to expand/collapse. The chevron is a passive indicator only (hidden when no detail).
+- Cards without detail show no chevron and ignore row clicks.
+- Hover the ✓ to mark done (isolated hit area — row tap never marks done).
+- Stale items (>6h) are dimmed. Polls the board file ~every 5 s.
 
 ## House Style for Agents
 
 Read `AGENTS.md`. The most important parts:
 
-- Always `doodle board` (or `get`) on status queries; answer from it.
+- Always `radar board` (or `get`) on status queries; answer from it.
 - Use stable names + put the real ask in `--detail`.
 - Prefer update-by-name.
 
@@ -71,7 +106,6 @@ Read `AGENTS.md`. The most important parts:
 
 - Built with SwiftPM + DynamicNotchKit (lifted patterns from Arthur).
 - Locking via `flock(LOCK_EX)` around mutations.
-- See `plan-opencode.md` for the full rationale and verification checklist.
 - See `docs/STATUS.md` for current implementation status + verification results (post-rename to agent-radar).
 
 ## MVP Scope (done)
@@ -81,6 +115,6 @@ Read `AGENTS.md`. The most important parts:
 - AGENTS.md + read discipline
 - Survives restart
 
-Fast follows tracked in the plan.
+Fast follows tracked in issues.
 
-MIT / whatever — use it.
+MIT — see LICENSE.
